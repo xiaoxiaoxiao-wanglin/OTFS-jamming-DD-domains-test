@@ -1,5 +1,5 @@
 clc
-clear all
+clear 
 close all
 tic
 %% OTFS parameters%%%%%%%%%%
@@ -18,7 +18,7 @@ N_syms_perfram = N*M;
 N_bits_perfram = N*M*M_bits;
 
 % 定义 JNR 范围
-JNR_dB = 0:2:10; 
+JNR_dB = -10:2:0; 
 JNR = 10.^(JNR_dB/10);
 
 % 干扰信号幅度
@@ -30,9 +30,10 @@ noise_power = interference_power ./ JNR;
 sigma_2 = noise_power;
 
 %%
-rng(1)
-N_fram = 1000;
-err_ber = zeros(length(JNR_dB),1);
+
+% rng(1)
+N_fram = 100;
+Y = zeros(N, M, N_fram); % 存储所有帧的 y
 for ijrn = 1:length(JNR_dB)
     for ifram = 1:N_fram
         %% random input bits generation%%%%%
@@ -44,13 +45,14 @@ for ijrn = 1:length(JNR_dB)
         s = OTFS_modulation(N,M,x);
         
         %% OTFS channel generation%%%%
-        [taps,delay_taps,Doppler_taps,chan_coef] = OTFS_channel_gen(N,M);        
+        [taps, delay_taps, Doppler_taps, chan_coef] = OTFS_channel_gen(N, M);       
         
         %% OTFS channel output%%%%%
         r = OTFS_channel_output(N,M,taps,delay_taps,Doppler_taps,chan_coef,sigma_2(ijrn),s, interference_amplitude);
         
         %% OTFS demodulation%%%%
         y = OTFS_demodulation(N,M,r);
+        Y(:,:,ifram) = y; % 保存每帧的 y
     end
     
     % 可视化接收端DD域信号
@@ -59,10 +61,11 @@ for ijrn = 1:length(JNR_dB)
     % title(['接收端DD域信号, JNR = ', num2str(JNR_dB(ijrn)), ' dB']);
     
     % 绘制误码率曲线
+    Y_avg = mean(abs(Y), 3); % 沿帧维度求平均
     fixed_vmin = 0;
     fixed_vmax = 5;
     figure;
-    imagesc(abs(y));
+    imagesc(Y_avg)
     colormap(parula);
     colorbar;
     clim([fixed_vmin fixed_vmax]); % 固定颜色映射范围
